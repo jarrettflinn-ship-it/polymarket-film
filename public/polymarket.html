@@ -200,24 +200,31 @@ function labelFromQuestion(q, evTitle) {
     let m;
     m = q.match(/(?:less\s+than|below|under)\s+\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '< $' + m[1].trim().toUpperCase();
-    m = q.match(/(?:more\s+than|over|greater\s+than|above|at\s+least)\s+\$?([\d.,]+\s*[mk]?)/i);
+    m = q.match(/(?:at\s+least)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '≥ $' + m[1].trim().toUpperCase();
+    m = q.match(/(?:more\s+than|over|greater\s+than|above)\s+\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '> $' + m[1].trim().toUpperCase();
     m = q.match(/between\s+\$?([\d.,]+\s*[mk]?)\s*(?:[-–]|and)\s*\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
+    // Safety net: pull only the quoted film title if no bracket matched
+    m = q.match(/Will\s+["'](.+?)["']\s+/i);
+    if (m) return m[1].trim();
   }
 
   // 2. "Will [X] be/have the ..." → extract X (film name, person, etc.)
   let m = q.match(/Will\s+["'"]?(.+?)["'"]?\s+(?:be|have)\s+the\b/i);
   if (m) {
     const label = m[1].trim().replace(/^["'"]|["'"]$/g, '');
-    if (label.length > 0 && label.length < 60) return label;
+    if (label.length > 0 && label.length < 60 &&
+        !label.includes('Box Office') && !label.includes('Opening Weekend')) return label;
   }
 
   // 3. "Will [X] be/gross/win/make..." → extract X
   m = q.match(/Will\s+["'"]?(.+?)["'"]?\s+(?:be\b|gross\b|win\b|make\b|earn\b|receive\b|get\b|release\b)/i);
   if (m) {
     const label = m[1].trim().replace(/^["'"]|["'"]$/g, '');
-    if (label.length > 0 && label.length < 60) return label;
+    if (label.length > 0 && label.length < 60 &&
+        !label.includes('Box Office') && !label.includes('Opening Weekend')) return label;
   }
 
   // 4. "[Person/Thing] announced/named/confirmed as..." → extract subject

@@ -832,29 +832,41 @@ function applyFilters(data) {
   return { ...data, events };
 }
 
-// Extract just the film title from a market question
-// "Will 'How to Train Your Dragon' be the top grossing movie of 2025?" → "How to Train Your Dragon"
+// Extract just the film title or outcome label from a market question.
+// "Will 'Scary Movie' Opening Weekend Box Office be at least 52m?" → "≥ $52M"
+// "Will Scream 7 be the top grossing movie of 2026?" → "Scream 7"
 function filmName(q) {
-  // For bracket/opening-weekend markets, show the dollar range instead of the repeated film name
+  // ── Box office / gross bracket → extract dollar range ───────────────────
   if (/gross|opening.?weekend|weekend.?box|revenue|box office/i.test(q)) {
     let m;
-    // "less than $50m" / "below $50m" → "< $50M"
-    m = q.match(/(?:less\s+than|below)\s+\$?([\d.,]+\s*[mk]?)/i);
+    // "less than / below $50m" → "< $50M"
+    m = q.match(/(?:less\s+than|below|under)\s+\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '< $' + m[1].trim().toUpperCase();
-    // "more than / over / greater than $90m" → "> $90M"
+    // "more than / over / greater than / at least $90m" → "≥ $90M" / "> $90M"
+    m = q.match(/(?:at\s+least)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '≥ $' + m[1].trim().toUpperCase();
     m = q.match(/(?:more\s+than|over|greater\s+than|above|higher\s+than)\s+\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '> $' + m[1].trim().toUpperCase();
-    // "between $50m-57.5m" or "between $50m and $57.5m" → "$50M – $57.5M"
+    // "between $50m and $57.5m" → "$50M – $57.5M"
     m = q.match(/between\s+\$?([\d.,]+\s*[mk]?)\s*(?:[-–]|and)\s*\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
-    // bare number range "49m and 53m" → "$49M – $53M"
+    // bare range "49m and 53m" → "$49M – $53M"
     m = q.match(/\$?([\d.,]+\s*[mk]?)\s+and\s+\$?([\d.,]+\s*[mk]?)/i);
     if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
+    // Safety net: if no bracket matched, pull only the quoted film title
+    m = q.match(/Will\s+["'](.+?)["']\s+/i);
+    if (m) return m[1].trim();
   }
 
-  // Handles: "Will 'Minecraft Movie' be...", "Will 'Superman' have the biggest..."
+  // ── "Will [X] be/have the ..." → extract X, guarding against event boilerplate ──
   const m = q.match(/Will\s+['"]?(.+?)['"]?\s+(?:be|gross|win|make|have|take|earn|receive)\b/i);
-  if (m) return m[1].trim().replace(/^['"]|['"]$/g, '');
+  if (m) {
+    const label = m[1].trim().replace(/^['"]|['"]$/g, '');
+    // Reject if we accidentally captured the full event boilerplate (contains "Box Office" etc.)
+    if (!label.includes('Box Office') && !label.includes('Opening Weekend') && !label.includes('Weekend Box')) {
+      return label;
+    }
+  }
   return q.replace(/^Will\s+/i, '').replace(/\?$/, '').trim();
 }
 
