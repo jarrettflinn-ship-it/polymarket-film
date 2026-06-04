@@ -192,6 +192,56 @@ function nowLabel() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// ── Extract a short, meaningful label from a market question ──────────────
+// Used instead of raw truncated question text so rows are distinguishable.
+function labelFromQuestion(q, evTitle) {
+  // 1. Box office / gross bracket → extract dollar range
+  if (/opening.?weekend|weekend.?box|box.?office|gross(?:ing)?|revenue/i.test(q)) {
+    let m;
+    m = q.match(/(?:less\s+than|below|under)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '< $' + m[1].trim().toUpperCase();
+    m = q.match(/(?:more\s+than|over|greater\s+than|above|at\s+least)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '> $' + m[1].trim().toUpperCase();
+    m = q.match(/between\s+\$?([\d.,]+\s*[mk]?)\s*(?:[-–]|and)\s*\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
+  }
+
+  // 2. "Will [X] be/have the ..." → extract X (film name, person, etc.)
+  let m = q.match(/Will\s+["'"]?(.+?)["'"]?\s+(?:be|have)\s+the\b/i);
+  if (m) {
+    const label = m[1].trim().replace(/^["'"]|["'"]$/g, '');
+    if (label.length > 0 && label.length < 60) return label;
+  }
+
+  // 3. "Will [X] be/gross/win/make..." → extract X
+  m = q.match(/Will\s+["'"]?(.+?)["'"]?\s+(?:be\b|gross\b|win\b|make\b|earn\b|receive\b|get\b|release\b)/i);
+  if (m) {
+    const label = m[1].trim().replace(/^["'"]|["'"]$/g, '');
+    if (label.length > 0 && label.length < 60) return label;
+  }
+
+  // 4. "[Person/Thing] announced/named/confirmed as..." → extract subject
+  m = q.match(/^(.+?)\s+(?:announced|named|selected|confirmed)\s+as\b/i);
+  if (m) {
+    const label = m[1].trim().replace(/^["'"]|["'"]$/g, '');
+    if (label.length > 0 && label.length < 50) return label;
+  }
+
+  // 5. Strip "Will " prefix + event-title boilerplate, keep the distinctive tail
+  const bare = q.replace(/^Will\s+/i, '').replace(/\?$/, '').trim();
+  if (evTitle) {
+    // Remove the first 3 words of event title from the question if present
+    const titleWords = evTitle.replace(/^["'"]|["'"]$/g, '').trim().split(/\s+/).slice(0, 4).join('\\s+');
+    const stripped = bare.replace(new RegExp(titleWords + '.{0,30}?(be|have|is|was)\\s+', 'i'), '').trim();
+    if (stripped && stripped !== bare && stripped.length > 1 && stripped.length < 50) {
+      return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+    }
+  }
+
+  // 6. Fallback: truncate bare question
+  return bare.length > 40 ? bare.slice(0, 40) + '…' : bare;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 function $M(n) {
   if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
@@ -282,12 +332,8 @@ function recordAndChart(ev) {
     seriesValues  = [m.yesPrice, m.noPrice];
   } else {
     seriesLabels = ev.markets.slice(0, 5).map(m => {
-      // Shorten label: extract bracket range or trim question
-      const q = m.question;
-      const bracket = q.match(/\$[\d.,]+\s*[MmKk]?\s*[-–]\s*\$[\d.,]+\s*[MmKk]?/)?.[0]
-                   || q.match(/(?:less than|below|more than|over)\s+\$[\d.,]+\s*[MmKk]?/i)?.[0]
-                   || q;
-      return bracket.length > 20 ? bracket.slice(0, 20) + '…' : bracket;
+      const lbl = labelFromQuestion(m.question, ev.title);
+      return lbl.length > 22 ? lbl.slice(0, 22) + '…' : lbl;
     });
     seriesValues = ev.markets.slice(0, 5).map(m => m.yesPrice);
   }
@@ -316,13 +362,14 @@ function renderCard(ev) {
   const topMkt   = ev.markets[0] || {};
   const totalVol = ev.markets.reduce((s, m) => s + m.volume, 0);
 
-  // Probability legend rows
+  // Probability legend rows — use labelFromQuestion so each row shows
+  // a short, distinct label (e.g. "$40M–$44M" or "Scream 7") not a truncated question
   const probRows = ev.markets.slice(0, 5).map((m, i) => {
     const color = COLORS[i % COLORS.length].line;
-    const shortQ = m.question.length > 55 ? m.question.slice(0, 55) + '…' : m.question;
+    const label = labelFromQuestion(m.question, ev.title);
     return `
       <div class="market-row">
-        <span class="market-q" title="${m.question.replace(/"/g, '&quot;')}">${shortQ}</span>
+        <span class="market-q" title="${m.question.replace(/"/g, '&quot;')}">${label}</span>
         <span class="market-prob">
           <span class="prob-yes" style="color:${color}">${pct(m.yesPrice)}</span>
           ${!isMulti ? `<span class="prob-sep">·</span><span class="prob-no">${pct(m.noPrice)}</span>` : ''}
