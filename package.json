@@ -1,0 +1,16 @@
+{
+  "name": "polymarket-film",
+  "version": "1.0.0",
+  "description": "Box office intelligence via crowd money — Polymarket film market dashboard",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.x"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

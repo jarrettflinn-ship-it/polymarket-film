@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolyFilm — Box Office Intelligence</title>
+  <style>
+    :root {
+      --bg:       #08080e;
+      --surface:  #11111b;
+      --surface2: #18182a;
+      --border:   #1e1e30;
+      --gold:     #f0b429;
+      --gold-dim: #7a5c12;
+      --text:     #e2e2f0;
+      --muted:    #6b6b8a;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --blue:     #60a5fa;
+      --purple:   #a78bfa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(8,8,14,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .logo-name {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+    .logo-name em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .logo-sub {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .btn-refresh {
+      background: var(--gold);
+      color: #08080e;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-refresh:hover    { opacity: 0.82; }
+    .btn-refresh:disabled { opacity: 0.4; cursor: default; }
+
+    .btn-export {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-export:hover { border-color: var(--gold-dim); color: var(--text); }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ── Stats bar ────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .stat {
+      flex: 1;
+      padding: 14px 20px;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: -0.5px;
+    }
+
+    .stat-val.plain { color: var(--text); }
+
+    /* ── Section header ───────────────────────────────────── */
+    .section-hd {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 32px 0 14px;
+    }
+
+    .section-hd:first-of-type { margin-top: 0; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    .section-vol {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 9px;
+      white-space: nowrap;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Event card wrapper ───────────────────────────────── */
+    .event-wrap {
+      margin-bottom: 24px;
+    }
+
+    .event-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .event-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .event-link {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      text-decoration: none;
+      letter-spacing: 0.2px;
+    }
+    .event-link:hover { text-decoration: underline; }
+
+    /* ── Race grid (multi-outcome box office) ─────────────── */
+    .race-table {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .race-head {
+      display: grid;
+      grid-template-columns: 36px 1fr 110px 90px 90px;
+      padding: 9px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(255,255,255,0.025);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+
+    .race-row {
+      display: grid;
+      grid-template-columns: 36px 1fr 110px 90px 90px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      gap: 10px;
+      transition: background 0.1s;
+    }
+    .race-row:last-child  { border-bottom: none; }
+    .race-row:hover       { background: rgba(240,180,41,0.035); }
+    .race-row.is-leader   { background: rgba(34,197,94,0.05); }
+
+    .rank {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+      text-align: center;
+    }
+    .rank.gold-rank { color: var(--gold); }
+
+    .film-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .film-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .film-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #f0b429, #fbbf24);
+      transition: width 0.5s ease;
+    }
+    .film-bar-fill.green-bar {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .yes-pct {
+      font-size: 15px;
+      font-weight: 800;
+      text-align: right;
+      color: var(--gold);
+    }
+    .yes-pct.leader { color: var(--green); font-size: 16px; }
+    .yes-pct.zero   { color: var(--muted); font-size: 13px; font-weight: 600; }
+
+    .mkt-vol {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .closes-col {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* ── Binary market cards ──────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: var(--gold-dim); }
+
+    .card-q {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+      flex: 1;
+    }
+
+    .prob-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+    .prob-bar {
+      height: 7px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .prob-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--green), #16a34a);
+      transition: width 0.4s ease;
+    }
+
+    .prob-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .lbl-yes { color: var(--green); font-weight: 800; }
+    .lbl-no  { color: var(--red);   font-weight: 600; }
+
+    .card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .card-foot-vol { font-weight: 700; color: var(--text); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .pill-movies { background: rgba(96,165,250,0.12); color: var(--blue); }
+    .pill-box    { background: rgba(240,180,41,0.12);  color: var(--gold); }
+    .pill-pop    { background: rgba(167,139,250,0.12); color: var(--purple); }
+
+    /* ── States ───────────────────────────────────────────── */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 80px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .err {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--red);
+      font-size: 13px;
+      margin-top: 20px;
+    }
+
+    /* ── Filter bar ───────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 14px 0 16px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      row-gap: 10px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .filter-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+      margin-right: 2px;
+    }
+
+    .fb {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 11px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .fb:hover { border-color: var(--gold-dim); color: var(--text); }
+    .fb.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #08080e;
+    }
+
+    .filter-count {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    /* ── Search ───────────────────────────────────────────── */
+    .search-wrap {
+      width: 100%;
+      position: relative;
+      margin-bottom: 4px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--muted);
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 36px 8px 34px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus         { border-color: var(--gold-dim); }
+    .search-input::placeholder  { color: var(--muted); }
+
+    .search-clear {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 4px;
+      display: none;
+    }
+    .search-clear:hover { color: var(--text); }
+    .search-clear.visible { display: block; }
+
+    /* ── Event badges ─────────────────────────────────────── */
+    .ev-badge {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+    .badge-resolved   { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .badge-restricted { background: rgba(96,165,250,0.12);  color: var(--blue); cursor: help; }
+
+    /* ── Price-change delta badge ─────────────────────────── */
+    .delta {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .delta-up   { background: rgba(34,197,94,0.12);  color: var(--green); }
+    .delta-down { background: rgba(239,68,68,0.12);  color: var(--red); }
+
+    /* ── Stat sub-label ───────────────────────────────────── */
+    .stat-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-weight: 400;
+    }
+
+    /* ── Site nav ────────────────────────────────────────── */
+    .site-nav { display: flex; align-items: center; gap: 2px; }
+    .site-nav-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 6px;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .site-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .site-nav-link.active { color: var(--gold); background: rgba(240,180,41,0.08); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <span class="logo-mark">🎬</span>
+    <div>
+      <div class="logo-name">Poly<em>Film</em></div>
+      <div class="logo-sub">Box Office Intelligence via Crowd Money</div>
+    </div>
+  </div>
+  <nav class="site-nav">
+    <a href="/" class="site-nav-link active">Home</a>
+    <a href="/polymarket.html" class="site-nav-link">Polymarket Live</a>
+    <a href="/kalshi.html" class="site-nav-link">Kalshi Live</a>
+    <a href="/history.html" class="site-nav-link">History</a>
+  </nav>
+  <div class="header-right">
+    <span class="timestamp" id="ts">—</span>
+    <button class="btn-export" id="exportBtn" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn-refresh" id="refreshBtn" onclick="load(true)">Refresh</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Filter bar — static, survives re-renders -->
+  <div class="filter-bar">
+
+    <!-- Search row — full width, above filter pills -->
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="searchInput"
+             placeholder="Search films, franchises, characters, markets…"
+             autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear" title="Clear search">✕</button>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-lbl">Period</span>
+      <button class="fb active" data-grp="period" data-val="week">Live Now</button>
+      <button class="fb" data-grp="period" data-val="month">Recent</button>
+      <button class="fb" data-grp="period" data-val="all">All Time</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Type</span>
+      <button class="fb active" data-grp="type" data-val="all">All</button>
+      <button class="fb" data-grp="type" data-val="movies">Movies</button>
+      <button class="fb" data-grp="type" data-val="series">Series</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Status</span>
+      <button class="fb active" data-grp="status" data-val="all">All</button>
+      <button class="fb" data-grp="status" data-val="live">Live</button>
+      <button class="fb" data-grp="status" data-val="resolved">Resolved</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Market</span>
+      <button class="fb active" data-grp="geo" data-val="all">All</button>
+      <button class="fb" data-grp="geo" data-val="us">🇺🇸 US</button>
+      <button class="fb" data-grp="geo" data-val="intl">🌐 Intl</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Category</span>
+      <button class="fb active" data-grp="cat" data-val="all">All</button>
+      <button class="fb" data-grp="cat" data-val="boxoffice">Box Office</button>
+      <button class="fb" data-grp="cat" data-val="awards">Awards</button>
+      <button class="fb" data-grp="cat" data-val="streaming">Streaming</button>
+      <button class="fb" data-grp="cat" data-val="props">Prop Bets</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Sort</span>
+      <button class="fb active" data-grp="sort" data-val="volume">Volume</button>
+      <button class="fb" data-grp="sort" data-val="trending">Trending</button>
+      <button class="fb" data-grp="sort" data-val="ending">Ending Soon</button>
+    </div>
+    <span class="filter-count" id="filterCount"></span>
+  </div>
+
+  <div id="root">
+    <div class="loading">
+      <div class="spinner"></div>
+      Fetching markets from Polymarket…
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Global state ──────────────────────────────────────────────────────────
+let _rawData = null;
+let _filters = { period: 'week', type: 'all', cat: 'all', status: 'all', geo: 'all', sort: 'volume', search: '' };
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function $M(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+
+function $D(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function pct(p) { return (p * 100).toFixed(1) + '%'; }
+
+function polyUrl(slug) { return 'https://polymarket.com/event/' + slug; }
+
+// ── Classifiers ───────────────────────────────────────────────────────────
+function _text(ev) {
+  return [ev.title, ...ev.markets.map(m => m.question)].join(' ');
+}
+
+function evIsSeries(ev) {
+  const t = _text(ev);
+  // Classic season/episode markers
+  if (/\bseason\s*\d/i.test(t) || /\bepisode\b/i.test(t) || /\bs\d+e\d+\b/i.test(t)) return true;
+  // Streaming/linear chart markets about shows (not movies — "netflix show" not "netflix movie")
+  if (/top\s+global\s+netflix\s+show/i.test(t)) return true;
+  if (/#1\s+(show|series|tv)\b/i.test(t)) return true;
+  // Viewership / ratings markets (any platform — streaming or linear)
+  if (/\b(viewership|viewers?\s+\d|nielsen|most\s+watched\s+(show|series)|most\s+streamed\s+(show|series))\b/i.test(t)) return true;
+  // Renewal / cancellation markets always refer to an ongoing series
+  if (/\b(be\s+renewed|be\s+cancell?ed|get\s+a\s+(second|third|fourth|next)\s+season)\b/i.test(t)) return true;
+  return false;
+}
+
+function evIsBoxOffice(ev) {
+  return /gross|box office|opening weekend|highest grossing/i.test(ev.title) ||
+    ev.tags.includes('box-office');
+}
+
+function evIsAwards(ev) {
+  return /oscar|emmy|grammy|golden globe|award|best picture|bafta|nominated/i.test(ev.title);
+}
+
+// Streaming category: Netflix/platform charts, viewership counts, episode timing
+function evIsViewership(ev) {
+  const t = _text(ev);
+  // Platform chart races (#1 / #2 show or movie on Netflix, etc.)
+  if (/top\s+(global|us)\s+netflix\s+(show|movie)/i.test(t)) return true;
+  if (/#[12]\s+(global|us)\s+netflix/i.test(t)) return true;
+  if (/what\s+will\s+be\s+the\s+(top|#1|number\s+one).*(netflix|streaming|hbo|hulu|prime)/i.test(t)) return true;
+  // Viewership count thresholds ("more than 75 million views", "viewership", etc.)
+  if (/\b(million\s+view(er)?s?|viewership|\d+[mk]\s+viewer)/i.test(t)) return true;
+  // Nielsen / linear TV ratings
+  if (/\bnielsen\b|\btv\s+ratings?\b/i.test(t)) return true;
+  // Episode release timing markets ("New Stranger Things episode released by…")
+  if (/new\s+.{0,40}\bepisode\s+released/i.test(t)) return true;
+  // How many viewers / weeks on chart / streams
+  if (/how\s+many\s+.{0,30}(viewer|view|weeks?\s+(on|at)|stream)/i.test(t)) return true;
+  // Most watched / most streamed show rankings
+  if (/most\s+(watched|streamed)\s+(show|series)/i.test(t)) return true;
+  return false;
+}
+
+function evIsPropBet(ev) {
+  // Prop bets = character or plot outcome markets ("Will X die?", "Who survives?")
+  // Viewership/chart markets take priority — they are never prop bets
+  if (evIsViewership(ev)) return false;
+  const t = _text(ev);
+  return (
+    /will\s+\S+\s+(die|survive|appear|return|be\s+killed)/i.test(t) ||
+    /who\s+(dies|kills|survives|is\s+the\s+killer|is\s+the\s+villain)/i.test(t) ||
+    /will\s+.{3,60}\s+(get\s+married|marry|break\s+up|divorce|hook\s+up|be\s+pregnant|have\s+a\s+baby)/i.test(t) ||
+    /will\s+.{3,60}\s+(turn\s+(evil|good|villain)|betray|be\s+the\s+villain)/i.test(t)
+  );
+}
+
+// ── Filter engine ─────────────────────────────────────────────────────────
+function applyFilters(data) {
+  if (!data?.events) return data;
+  const now = Date.now();
+  const DAY = 864e5;
+
+  let events = data.events;
+
+  // — Period —
+  if (_filters.period === 'week') {
+    // "Live Now" — all currently open markets, regardless of end date
+    events = events.filter(e => !e.historical && !e.closed);
+  } else if (_filters.period === 'month') {
+    // "Recent" — open markets + historical that closed within the past 30 days
+    events = events.filter(e => {
+      if (!e.historical && !e.closed) return true;          // all still-open markets
+      const ts = e.endDate ? new Date(e.endDate).getTime() : 0;
+      return ts > now - 30 * DAY;                           // closed within last 30d
+    });
+  }
+  // 'all' = full database, no date gate
+
+  // — Search —
+  if (_filters.search) {
+    const q = _filters.search.toLowerCase();
+    events = events.filter(e =>
+      e.title.toLowerCase().includes(q) ||
+      e.markets.some(m => m.question.toLowerCase().includes(q))
+    );
+  }
+
+  // — Status —
+  if (_filters.status === 'live')     events = events.filter(e => !e.historical && !e.closed);
+  if (_filters.status === 'resolved') events = events.filter(e =>  e.historical ||  e.closed);
+
+  // — Geo —
+  if (_filters.geo === 'us')   events = events.filter(e => !e.restricted);
+  if (_filters.geo === 'intl') events = events.filter(e =>  e.restricted);
+
+  // — Type —
+  if (_filters.type === 'movies') events = events.filter(e => !evIsSeries(e));
+  if (_filters.type === 'series') events = events.filter(evIsSeries);
+
+  // — Category —
+  if (_filters.cat === 'boxoffice')  events = events.filter(evIsBoxOffice);
+  if (_filters.cat === 'awards')     events = events.filter(evIsAwards);
+  if (_filters.cat === 'streaming')  events = events.filter(evIsViewership);
+  if (_filters.cat === 'props')      events = events.filter(evIsPropBet);
+
+  // — Sort —
+  if (_filters.sort === 'trending') {
+    // 24-hour volume descending; resolved markets float to bottom
+    events = [...events].sort((a, b) => {
+      const aResolved = a.historical || a.closed;
+      const bResolved = b.historical || b.closed;
+      if (aResolved !== bResolved) return aResolved ? 1 : -1;
+      return (b.volume24hr || 0) - (a.volume24hr || 0);
+    });
+  } else if (_filters.sort === 'ending') {
+    // Live events by endDate asc (soonest closing first), resolved at end
+    events = [...events].sort((a, b) => {
+      const aResolved = a.historical || a.closed;
+      const bResolved = b.historical || b.closed;
+      if (aResolved !== bResolved) return aResolved ? 1 : -1;
+      if (aResolved) {
+        // Both resolved: most recent first
+        return new Date(b.endDate || 0) - new Date(a.endDate || 0);
+      }
+      const aT = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+      const bT = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+      return aT - bT;
+    });
+  } else {
+    // Default: volume descending (server already sorted this way, but re-apply after filtering)
+    events = [...events].sort((a, b) => b.volume - a.volume);
+  }
+
+  return { ...data, events };
+}
+
+// Extract just the film title from a market question
+// "Will 'How to Train Your Dragon' be the top grossing movie of 2025?" → "How to Train Your Dragon"
+function filmName(q) {
+  // For bracket/opening-weekend markets, show the dollar range instead of the repeated film name
+  if (/gross|opening.?weekend|weekend.?box|revenue|box office/i.test(q)) {
+    let m;
+    // "less than $50m" / "below $50m" → "< $50M"
+    m = q.match(/(?:less\s+than|below)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '< $' + m[1].trim().toUpperCase();
+    // "more than / over / greater than $90m" → "> $90M"
+    m = q.match(/(?:more\s+than|over|greater\s+than|above|higher\s+than)\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '> $' + m[1].trim().toUpperCase();
+    // "between $50m-57.5m" or "between $50m and $57.5m" → "$50M – $57.5M"
+    m = q.match(/between\s+\$?([\d.,]+\s*[mk]?)\s*(?:[-–]|and)\s*\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
+    // bare number range "49m and 53m" → "$49M – $53M"
+    m = q.match(/\$?([\d.,]+\s*[mk]?)\s+and\s+\$?([\d.,]+\s*[mk]?)/i);
+    if (m) return '$' + m[1].trim().toUpperCase() + ' – $' + m[2].trim().toUpperCase();
+  }
+
+  // Handles: "Will 'Minecraft Movie' be...", "Will 'Superman' have the biggest..."
+  const m = q.match(/Will\s+['"]?(.+?)['"]?\s+(?:be|gross|win|make|have|take|earn|receive)\b/i);
+  if (m) return m[1].trim().replace(/^['"]|['"]$/g, '');
+  return q.replace(/^Will\s+/i, '').replace(/\?$/, '').trim();
+}
+
+function pillTag(tags) {
+  if (tags.includes('box-office')) return '<span class="pill pill-box">Box Office</span>';
+  if (tags.includes('movies'))     return '<span class="pill pill-movies">Movies</span>';
+  return '<span class="pill pill-pop">Pop Culture</span>';
+}
+
+// ── Render race grid (multi-outcome, e.g. "highest grossing 2025") ───────
+function renderRace(ev) {
+  const markets = ev.markets.slice(); // already sorted by yesPrice desc
+  const maxP    = Math.max(...markets.map(m => m.yesPrice), 0.01);
+
+  const rows = markets.map((m, i) => {
+    const isLeader = m.yesPrice > 0.5;
+    const barW     = Math.round((m.yesPrice / maxP) * 100);
+    const name     = filmName(m.question);
+    const rankCls  = isLeader ? 'gold-rank' : '';
+    const priceCls = isLeader ? 'leader' : (m.yesPrice < 0.005 ? 'zero' : '');
+    const barCls   = isLeader ? 'green-bar' : '';
+    const rowCls   = isLeader ? 'race-row is-leader' : 'race-row';
+
+    return `
+      <div class="${rowCls}">
+        <div class="rank ${rankCls}">${i + 1}</div>
+        <div>
+          <div class="film-name">${name}</div>
+          <div class="film-bar"><div class="film-bar-fill ${barCls}" style="width:${barW}%"></div></div>
+        </div>
+        <div class="yes-pct ${priceCls}">${pct(m.yesPrice)}</div>
+        <div class="mkt-vol">${m.volume > 0 ? $M(m.volume) : '<span style="color:var(--muted)">New</span>'}</div>
+        <div class="closes-col">${$D(ev.endDate)}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="event-wrap">
+      <div class="event-meta">
+        <div class="event-title">
+          ${ev.title}
+          ${ev.closed || ev.historical ? '<span class="ev-badge badge-resolved">RESOLVED</span>' : ''}
+          ${ev.restricted ? '<span class="ev-badge badge-restricted" title="Geo-restricted — view only in US, no US trading">🌐 INTL</span>' : ''}
+        </div>
+        <a class="event-link" href="${polyUrl(ev.slug)}" target="_blank" rel="noopener">View on Polymarket →</a>
+      </div>
+      <div class="race-table">
+        <div class="race-head">
+          <div>#</div>
+          <div>Film</div>
+          <div style="text-align:right">Yes %</div>
+          <div style="text-align:right">Volume</div>
+          <div style="text-align:right">Closes</div>
+        </div>
+        ${rows}
+      </div>
+    </div>`;
+}
+
+// ── Render binary market card ─────────────────────────────────────────────
+function renderCard(m, ev) {
+  const yesPct = +(m.yesPrice * 100).toFixed(1);
+  const noPct  = +(100 - yesPct).toFixed(1);
+
+  // Price-change delta badge — only show if >= 0.5pp movement
+  const deltaHtml = (() => {
+    const d  = m.oneDayPriceChange || 0;
+    const pp = d * 100;
+    if (Math.abs(pp) < 0.5) return '';
+    const cls   = pp > 0 ? 'delta-up' : 'delta-down';
+    const arrow = pp > 0 ? '↑' : '↓';
+    const sign  = pp > 0 ? '+' : '';
+    return `<span class="delta ${cls}" title="24h price change">${arrow}${sign}${pp.toFixed(1)}pp</span>`;
+  })();
+
+  // Resolved badge
+  const resolvedHtml = (ev.closed || ev.historical)
+    ? '<span class="ev-badge badge-resolved" style="margin-left:0">RESOLVED</span>'
+    : '';
+
+  return `
+    <div class="card">
+      <div class="card-q">${m.question}</div>
+      <div class="prob-wrap">
+        <div class="prob-bar"><div class="prob-fill" style="width:${yesPct}%"></div></div>
+        <div class="prob-labels">
+          <span class="lbl-yes">Yes ${yesPct}% ${deltaHtml}</span>
+          <span class="lbl-no">No ${noPct}%</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="card-foot-vol">${m.volume > 0 ? $M(m.volume) : '<span style="color:var(--muted);font-weight:500">New</span>'}</span>
+        <span>${resolvedHtml || (ev.restricted ? '<span class="ev-badge badge-restricted" title="Intl only — not tradeable in US">🌐</span>' : $D(ev.endDate))}</span>
+        <a class="event-link" href="${polyUrl(ev.slug)}" target="_blank" rel="noopener">View →</a>
+      </div>
+    </div>`;
+}
+
+// ── Main render ───────────────────────────────────────────────────────────
+function render(data) {
+  const events = data.events || [];
+
+  if (!events.length) {
+    return '<div class="empty">No active film markets found on Polymarket right now.</div>';
+  }
+
+  // Classify events
+  const isRace = (ev) => {
+    const t = ev.title.toLowerCase();
+    const isFilmRace = /grossing|box office|opening weekend|highest.*movie|biggest.*movie/i.test(t);
+    return ev.markets.length > 3 && isFilmRace;
+  };
+  const isAward = (ev) => {
+    const t = ev.title.toLowerCase();
+    return /oscar|emmy|grammy|golden globe|award|best picture/i.test(t);
+  };
+
+  const races  = events.filter(isRace);
+  const awards = events.filter(ev => !isRace(ev) && isAward(ev));
+  const other  = events.filter(ev => !isRace(ev) && !isAward(ev));
+
+  // Flatten non-race events into individual market cards, sorted by volume
+  const binaryCards = [];
+  for (const ev of [...awards, ...other]) {
+    for (const m of ev.markets) {
+      binaryCards.push({ m, ev });
+    }
+  }
+  binaryCards.sort((a, b) => b.m.volume - a.m.volume);
+
+  // Stats
+  const openEvents   = events.filter(e => !e.closed);
+  const totalVol     = events.reduce((s, e) => s + e.volume, 0);
+  const totalMarkets = events.reduce((s, e) => s + e.markets.length, 0);
+  // Crowd leader = most notable live signal; prefer box-office > awards > general > prop bets
+  // Scored by: yesPrice × log(volume) × category boost
+  const leaderCandidates = openEvents.flatMap(e => {
+    const isBO  = evIsBoxOffice(e);
+    const isAwd = evIsAwards(e);
+    const isProp = evIsPropBet(e);
+    const catBoost = isBO ? 3 : isAwd ? 2 : isProp ? 0.4 : 1;
+    return e.markets
+      .filter(m => !m.closed && m.yesPrice > 0.5)
+      .map(m => ({
+        m,
+        ev: e,
+        score: m.yesPrice * Math.log1p(m.volume || 1) * catBoost,
+      }));
+  });
+  leaderCandidates.sort((a, b) => b.score - a.score);
+  const leaderEntry = leaderCandidates[0];
+  const leader      = leaderEntry?.m;
+  const leaderEv    = leaderEntry?.ev;
+
+  // Counts based on the FILTERED events so stats respond to filter changes
+  const liveCount    = events.filter(e => !e.historical).length;
+  const histCount    = events.filter(e =>  e.historical).length;
+  // Total database size (unfiltered) for context in DB Records label
+  const totalDbSize  = (data.liveCount ?? 0) + (data.histCount ?? 0);
+  const isFiltered   = events.length < (totalDbSize || events.length);
+  const dbNote       = data.histReady === false
+    ? '<span style="color:var(--gold);font-size:10px"> ⏳ loading…</span>'
+    : '';
+
+  // 24-hour rolling volume across live (non-historical) events
+  const liveEvents = events.filter(e => !e.historical && !e.closed);
+  const vol24h = liveEvents.reduce((s, e) => s + (e.volume24hr || 0), 0);
+  // Trending event: highest volume24hr among live events
+  const trendingEv = liveEvents.slice().sort((a, b) => (b.volume24hr||0) - (a.volume24hr||0))[0];
+
+  const statsBar = `
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-label">Total Volume</div>
+        <div class="stat-val">${$M(totalVol)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Live Markets</div>
+        <div class="stat-val plain">${liveCount}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">24h Active</div>
+        <div class="stat-val">${vol24h > 0 ? $M(vol24h) : '—'}</div>
+        ${trendingEv && vol24h > 0 ? `<div class="stat-sub" title="${trendingEv.title}">📈 ${trendingEv.title.slice(0,32)}${trendingEv.title.length > 32 ? '…' : ''}</div>` : ''}
+      </div>
+      <div class="stat">
+        <div class="stat-label">DB Records${dbNote}</div>
+        <div class="stat-val plain">${liveCount + histCount}${isFiltered && totalDbSize ? '<span style="color:var(--muted);font-size:11px;font-weight:400"> / ' + totalDbSize + '</span>' : ''}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Crowd Leader</div>
+        <div class="stat-val" style="font-size:13px">${leader ? (() => {
+          const title = leaderEv?.title || '';
+          // Extract short film name from event title (strip trailing punctuation / question)
+          const filmTitle = title.replace(/\?.*$/, '').replace(/opening weekend.*/i, '').replace(/box office.*/i, '').trim().replace(/["'"]/g, '').trim();
+          const label = filmName(leader.question);
+          // Combine: "Backrooms · > $61M · 99.6%"
+          const parts = [];
+          if (filmTitle && !label.toLowerCase().includes(filmTitle.toLowerCase().slice(0,6))) parts.push(filmTitle);
+          parts.push(label);
+          return parts.join(' · ') + ' <span style="color:var(--green)">' + pct(leader.yesPrice) + '</span>';
+        })() : '—'}</div>
+      </div>
+    </div>`;
+
+  let html = statsBar;
+
+  // Box office race sections
+  if (races.length) {
+    const raceVol = races.reduce((s, e) => s + e.volume, 0);
+    html += `
+      <div class="section-hd">
+        <span class="section-label">Box Office Race</span>
+        <span class="section-vol">${$M(raceVol)}</span>
+        <div class="section-line"></div>
+      </div>
+      ${races.map(renderRace).join('')}`;
+  }
+
+  // Binary / other market cards
+  if (binaryCards.length) {
+    const cardVol = binaryCards.reduce((s, b) => s + b.m.volume, 0);
+    html += `
+      <div class="section-hd">
+        <span class="section-label">Film &amp; Entertainment Markets</span>
+        <span class="section-vol">${$M(cardVol)}</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="cards">
+        ${binaryCards.map(b => renderCard(b.m, b.ev)).join('')}
+      </div>`;
+  }
+
+  return html;
+}
+
+// ── Fetch & render ────────────────────────────────────────────────────────
+function rerender() {
+  if (!_rawData) return;
+  const filtered = applyFilters(_rawData);
+  document.getElementById('root').innerHTML = render(filtered);
+  const n = filtered.events?.length ?? 0;
+  const total = _rawData.events?.length ?? 0;
+  document.getElementById('filterCount').textContent =
+    n < total ? `${n} of ${total} events` : `${total} events`;
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!_rawData) return;
+
+  const filtered = applyFilters(_rawData);
+  const events   = filtered?.events || [];
+
+  const catLabel = e => {
+    const c = [];
+    if (evIsBoxOffice(e))  c.push('Box Office');
+    if (evIsAwards(e))     c.push('Awards');
+    if (evIsViewership(e)) c.push('Streaming');
+    if (evIsPropBet(e))    c.push('Prop Bet');
+    return c.join(' | ') || 'General';
+  };
+
+  const esc = v => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    return /[,"\n\r]/.test(s) ? `"${s}"` : s;
+  };
+
+  const headers = [
+    'Event Title', 'Market Question',
+    'Outcome 1', 'Outcome 1 %',
+    'Outcome 2', 'Outcome 2 %',
+    'Market Volume ($)', 'Event Volume ($)',
+    'End Date', 'Status', 'Category', 'Geo', 'Tags', 'URL',
+    // Extended metrics
+    '24h Volume ($)', '1wk Volume ($)',
+    'Open Interest ($)', 'Liquidity ($)',
+    'Competitive Score', 'Comment Count',
+    '24h Price Δ (pp)', 'Spread', 'Last Trade Price',
+  ];
+
+  const rows = [headers.map(esc).join(',')];
+
+  for (const ev of events) {
+    const status   = ev.historical || ev.closed ? 'Resolved' : 'Live';
+    const geo      = ev.restricted ? 'Intl' : 'US';
+    const category = catLabel(ev);
+    const tags     = ev.tags.join(' | ');
+    const url      = 'https://polymarket.com/event/' + ev.slug;
+    const evVol    = ev.volume.toFixed(2);
+    const endDate  = ev.endDate ? ev.endDate.slice(0, 10) : '';
+
+    // Event-level extended metrics
+    const ev24h  = (ev.volume24hr   || 0).toFixed(2);
+    const ev1wk  = (ev.volume1wk    || 0).toFixed(2);
+    const evOI   = (ev.openInterest || 0).toFixed(2);
+    const evLiq  = (ev.liquidity    || 0).toFixed(2);
+    const evComp = (ev.competitive  || 0).toFixed(3);
+    const evComm = String(ev.commentCount || 0);
+
+    for (const m of ev.markets) {
+      const outcomes = m.outcomes && m.outcomes.length >= 2 ? m.outcomes : ['Yes', 'No'];
+      // Market-level extended metrics
+      const deltaStr = m.oneDayPriceChange ? (m.oneDayPriceChange * 100).toFixed(2) : '0';
+      const spreadStr = (m.spread || 0).toFixed(4);
+      const ltpStr    = (m.lastTradePrice || 0).toFixed(4);
+
+      const row = [
+        ev.title,
+        m.question,
+        outcomes[0],
+        (m.yesPrice * 100).toFixed(1) + '%',
+        outcomes[1],
+        (m.noPrice  * 100).toFixed(1) + '%',
+        m.volume.toFixed(2),
+        evVol,
+        endDate,
+        status,
+        category,
+        geo,
+        tags,
+        url,
+        // Extended
+        ev24h, ev1wk, evOI, evLiq, evComp, evComm,
+        deltaStr, spreadStr, ltpStr,
+      ];
+      rows.push(row.map(esc).join(','));
+    }
+  }
+
+  const csv  = rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+
+  // Build a descriptive filename from active filters
+  const parts = ['polyfilm'];
+  if (_filters.period !== 'all')   parts.push(_filters.period);
+  if (_filters.status !== 'all')   parts.push(_filters.status);
+  if (_filters.geo    !== 'all')   parts.push(_filters.geo);
+  if (_filters.type   !== 'all')   parts.push(_filters.type);
+  if (_filters.cat    !== 'all')   parts.push(_filters.cat);
+  if (_filters.search)             parts.push(_filters.search.replace(/\s+/g, '-').toLowerCase().slice(0, 20));
+  parts.push(new Date().toISOString().slice(0, 10));
+
+  a.href     = url;
+  a.download = parts.join('_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function load(force = false) {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+
+  try {
+    const r    = await fetch('/api/markets' + (force ? '?force=1' : ''));
+    const data = await r.json();
+
+    if (data.error) throw new Error(data.error);
+
+    _rawData = data;
+    rerender();
+    document.getElementById('ts').textContent =
+      'Updated ' + new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    document.getElementById('root').innerHTML =
+      `<div class="err">Failed to load markets: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Filter button handlers ────────────────────────────────────────────────
+document.querySelectorAll('.fb').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const grp = btn.dataset.grp;
+    const val = btn.dataset.val;
+    document.querySelectorAll(`.fb[data-grp="${grp}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _filters[grp] = val;
+    rerender();
+  });
+});
+
+// ── Search handler (debounced 200 ms) ────────────────────────────────────
+let _searchTimer = null;
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    _filters.search = searchInput.value.trim();
+    searchClear.classList.toggle('visible', _filters.search.length > 0);
+    rerender();
+  }, 200);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  _filters.search = '';
+  rerender();
+  searchInput.focus();
+});
+
+load();
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>

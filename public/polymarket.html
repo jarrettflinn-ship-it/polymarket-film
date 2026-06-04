@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Live — PolyFilm</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #08080e;
+      --surface:  #11111b;
+      --surface2: #18182a;
+      --border:   #1e1e30;
+      --gold:     #f0b429;
+      --gold-dim: #7a5c12;
+      --text:     #e2e2f0;
+      --muted:    #6b6b8a;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --blue:     #60a5fa;
+      --purple:   #a78bfa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* ── Header ─────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(8,8,14,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .logo-name { font-size: 17px; font-weight: 800; letter-spacing: -0.4px; }
+    .logo-name em { font-style: normal; color: var(--gold); }
+    .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; }
+    .site-nav { display: flex; align-items: center; gap: 2px; flex: 1; }
+    .site-nav-link { color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 6px; transition: all 0.12s; white-space: nowrap; }
+    .site-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .site-nav-link.active { color: var(--gold); background: rgba(240,180,41,0.08); }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .page-badge { display: flex; align-items: center; gap: 8px; }
+    .badge-source { font-size: 13px; font-weight: 800; color: var(--blue); letter-spacing: 0.2px; }
+    .badge-live { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); border-radius: 20px; padding: 3px 9px; }
+    .live-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .timestamp { font-size: 12px; color: var(--muted); }
+    .btn-refresh { background: var(--gold); color: #08080e; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+    .btn-refresh:hover { opacity: 0.82; }
+    .btn-refresh:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Layout ──────────────────────────────────── */
+    .main { max-width: 1140px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    /* ── Stats bar ───────────────────────────────── */
+    .stats-bar { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 28px; }
+    .stat { flex: 1; padding: 14px 20px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .stat-val { font-size: 18px; font-weight: 800; color: var(--gold); letter-spacing: -0.5px; }
+    .stat-val.plain { color: var(--text); }
+
+    /* ── Event grid ──────────────────────────────── */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+
+    /* ── Event card ──────────────────────────────── */
+    .ev-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex; flex-direction: column; gap: 14px;
+      transition: border-color 0.15s;
+    }
+    .ev-card:hover { border-color: var(--gold-dim); }
+
+    .ev-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .ev-card-title { font-size: 13px; font-weight: 700; line-height: 1.4; flex: 1; }
+    .ev-link { font-size: 11px; font-weight: 700; color: var(--blue); text-decoration: none; white-space: nowrap; flex-shrink: 0; }
+    .ev-link:hover { text-decoration: underline; }
+
+    /* ── Market rows inside card ─────────────────── */
+    .market-rows { display: flex; flex-direction: column; gap: 6px; }
+    .market-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .market-q { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .market-prob { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .prob-yes { font-size: 13px; font-weight: 800; color: var(--green); }
+    .prob-no  { font-size: 12px; font-weight: 600; color: var(--red); }
+    .prob-sep { color: var(--muted); font-size: 10px; }
+
+    /* ── Chart container ─────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      height: 130px;
+      background: rgba(255,255,255,0.015);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    /* ── Card footer ─────────────────────────────── */
+    .ev-card-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); padding-top: 10px; border-top: 1px solid var(--border); }
+    .foot-vol { font-weight: 700; color: var(--text); }
+    .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+    .pill-intl { background: rgba(96,165,250,0.12); color: var(--blue); }
+
+    /* ── Toolbar ─────────────────────────────────── */
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--muted); pointer-events: none; }
+    .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 34px 8px 34px; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .search-input:focus { border-color: var(--gold-dim); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 2px 4px; display: none; }
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--text); }
+    .result-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .btn-export { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn-export:hover { border-color: var(--gold-dim); color: var(--text); }
+
+    /* ── Loading / empty / error ─────────────────── */
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 20px; color: var(--muted); font-size: 14px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+    .err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 16px; color: var(--red); font-size: 13px; margin-top: 20px; }
+    .refresh-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">
+    <span style="font-size:20px">🎬</span>
+    <div>
+      <div class="logo-name">Poly<em>Film</em></div>
+      <div class="logo-sub">Box Office Intelligence</div>
+    </div>
+  </a>
+  <nav class="site-nav">
+    <a href="/" class="site-nav-link">Home</a>
+    <a href="/polymarket.html" class="site-nav-link active">Polymarket Live</a>
+    <a href="/kalshi.html" class="site-nav-link">Kalshi Live</a>
+    <a href="/history.html" class="site-nav-link">History</a>
+  </nav>
+  <div class="header-right">
+    <div class="page-badge">
+      <span class="badge-source">Polymarket</span>
+      <span class="badge-live"><span class="live-dot"></span>Live</span>
+    </div>
+    <span class="timestamp" id="ts">—</span>
+    <button class="btn-refresh" id="refreshBtn" onclick="load(true)">Refresh</button>
+  </div>
+</header>
+
+<main class="main">
+  <div id="statsWrap"></div>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="searchInput"
+             placeholder="Search events and markets…" autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear" title="Clear">✕</button>
+    </div>
+    <span class="result-count" id="resultCount"></span>
+    <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+  <div id="root">
+    <div class="loading"><div class="spinner"></div>Fetching live Polymarket entertainment markets…</div>
+  </div>
+  <p class="refresh-note" id="refreshNote"></p>
+</main>
+
+<script>
+// ── Chart color palette (Polymarket-style) ────────────────────────────────
+const COLORS = [
+  { line: '#22c55e', bg: 'rgba(34,197,94,0.06)'   }, // green  — Yes / leader
+  { line: '#ef4444', bg: 'rgba(239,68,68,0.06)'   }, // red    — No
+  { line: '#60a5fa', bg: 'rgba(96,165,250,0.06)'  }, // blue
+  { line: '#f0b429', bg: 'rgba(240,180,41,0.06)'  }, // gold
+  { line: '#a78bfa', bg: 'rgba(167,139,250,0.06)' }, // purple
+];
+
+// ── In-session chart history ──────────────────────────────────────────────
+// eventId -> { labels: [timeStr...], series: [[prices...], [prices...]] }
+const chartSeries = {};
+// eventId -> Chart instance
+const chartInstances = {};
+
+function nowLabel() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function $M(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return n > 0 ? '$' + n.toFixed(0) : 'New';
+}
+function $D(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function pct(p) { return (p * 100).toFixed(1) + '%'; }
+function polyUrl(slug) { return 'https://polymarket.com/event/' + slug; }
+
+// ── Chart management ──────────────────────────────────────────────────────
+function initOrUpdateChart(evId, labels, seriesData, seriesLabels) {
+  const canvas = document.getElementById('chart-' + evId);
+  if (!canvas) return;
+
+  if (chartInstances[evId]) {
+    // Update existing chart
+    const chart = chartInstances[evId];
+    chart.data.labels = labels;
+    seriesData.forEach((vals, i) => {
+      if (chart.data.datasets[i]) chart.data.datasets[i].data = vals;
+    });
+    chart.update('none');
+    return;
+  }
+
+  // Create new chart
+  chartInstances[evId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: seriesData.map((vals, i) => ({
+        label:           seriesLabels[i] || ('Outcome ' + (i + 1)),
+        data:            vals,
+        borderColor:     COLORS[i % COLORS.length].line,
+        backgroundColor: COLORS[i % COLORS.length].bg,
+        borderWidth:     2,
+        tension:         0.35,
+        fill:            false,
+        pointRadius:     vals.length < 5 ? 3 : 2,
+        pointHoverRadius:5,
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display:  seriesData.length > 1,
+          position: 'top',
+          labels:   { color: '#6b6b8a', font: { size: 10 }, boxWidth: 12, padding: 8 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y * 100).toFixed(1) + '%'
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks:  { color: '#6b6b8a', font: { size: 9 }, maxTicksLimit: 6 },
+          grid:   { color: 'rgba(30,30,48,0.8)' },
+        },
+        y: {
+          min: 0, max: 1,
+          ticks:  { color: '#6b6b8a', font: { size: 9 }, callback: v => Math.round(v * 100) + '%' },
+          grid:   { color: 'rgba(30,30,48,0.8)' },
+        }
+      }
+    }
+  });
+}
+
+function recordAndChart(ev) {
+  const label = nowLabel();
+
+  // Determine series: for binary (≤2 markets), show Yes+No of first market.
+  // For multi-outcome, show yesPrice of each market (up to 5).
+  let seriesLabels, seriesValues;
+  if (ev.markets.length <= 2) {
+    const m = ev.markets[0];
+    seriesLabels  = ['Yes', 'No'];
+    seriesValues  = [m.yesPrice, m.noPrice];
+  } else {
+    seriesLabels = ev.markets.slice(0, 5).map(m => {
+      // Shorten label: extract bracket range or trim question
+      const q = m.question;
+      const bracket = q.match(/\$[\d.,]+\s*[MmKk]?\s*[-–]\s*\$[\d.,]+\s*[MmKk]?/)?.[0]
+                   || q.match(/(?:less than|below|more than|over)\s+\$[\d.,]+\s*[MmKk]?/i)?.[0]
+                   || q;
+      return bracket.length > 20 ? bracket.slice(0, 20) + '…' : bracket;
+    });
+    seriesValues = ev.markets.slice(0, 5).map(m => m.yesPrice);
+  }
+
+  // Update in-session history
+  if (!chartSeries[ev.id]) {
+    chartSeries[ev.id] = { labels: [], series: seriesValues.map(() => []) };
+  }
+  const hist = chartSeries[ev.id];
+  hist.labels.push(label);
+  seriesValues.forEach((v, i) => { hist.series[i] = (hist.series[i] || []); hist.series[i].push(v); });
+
+  // Keep rolling window of 60 points (~30 min at 30s refresh)
+  const MAX = 60;
+  if (hist.labels.length > MAX) {
+    hist.labels = hist.labels.slice(-MAX);
+    hist.series = hist.series.map(s => s.slice(-MAX));
+  }
+
+  initOrUpdateChart(ev.id, hist.labels, hist.series, seriesLabels);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderCard(ev) {
+  const isMulti  = ev.markets.length > 2;
+  const topMkt   = ev.markets[0] || {};
+  const totalVol = ev.markets.reduce((s, m) => s + m.volume, 0);
+
+  // Probability legend rows
+  const probRows = ev.markets.slice(0, 5).map((m, i) => {
+    const color = COLORS[i % COLORS.length].line;
+    const shortQ = m.question.length > 55 ? m.question.slice(0, 55) + '…' : m.question;
+    return `
+      <div class="market-row">
+        <span class="market-q" title="${m.question.replace(/"/g, '&quot;')}">${shortQ}</span>
+        <span class="market-prob">
+          <span class="prob-yes" style="color:${color}">${pct(m.yesPrice)}</span>
+          ${!isMulti ? `<span class="prob-sep">·</span><span class="prob-no">${pct(m.noPrice)}</span>` : ''}
+        </span>
+      </div>`;
+  }).join('');
+
+  const intlBadge = ev.restricted
+    ? `<span class="pill pill-intl" title="Geo-restricted — Intl only">🌐 INTL</span>` : '';
+
+  return `
+    <div class="ev-card">
+      <div class="ev-card-head">
+        <div class="ev-card-title">${ev.title}</div>
+        <a class="ev-link" href="${polyUrl(ev.slug)}" target="_blank" rel="noopener">View →</a>
+      </div>
+      <div class="market-rows">${probRows}</div>
+      <div class="chart-wrap">
+        <canvas id="chart-${ev.id}"></canvas>
+      </div>
+      <div class="ev-card-foot">
+        <span class="foot-vol">${$M(totalVol)}</span>
+        <span>Closes ${$D(ev.endDate)}</span>
+        ${intlBadge || ''}
+      </div>
+    </div>`;
+}
+
+function renderStats(events) {
+  const liveCount = events.length;
+  const totalVol  = events.reduce((s, e) => s + e.volume, 0);
+  const vol24h    = events.reduce((s, e) => s + (e.volume24hr || 0), 0);
+  const markets   = events.reduce((s, e) => s + e.markets.length, 0);
+  return `
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-label">Total Volume</div><div class="stat-val">${$M(totalVol)}</div></div>
+      <div class="stat"><div class="stat-label">Live Events</div><div class="stat-val plain">${liveCount}</div></div>
+      <div class="stat"><div class="stat-label">Open Markets</div><div class="stat-val plain">${markets}</div></div>
+      <div class="stat"><div class="stat-label">24h Volume</div><div class="stat-val">${vol24h > 0 ? $M(vol24h) : '—'}</div></div>
+    </div>`;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let _events       = [];   // all live events (unfiltered)
+let _searchQuery  = '';
+let _refreshCount = 0;
+let _searchTimer  = null;
+const REFRESH_INTERVAL = 60;
+
+// ── Filtered view ─────────────────────────────────────────────────────────
+function filteredEvents() {
+  if (!_searchQuery) return _events;
+  const q = _searchQuery.toLowerCase();
+  return _events.filter(e =>
+    e.title.toLowerCase().includes(q) ||
+    e.markets.some(m => m.question.toLowerCase().includes(q))
+  );
+}
+
+function rerender() {
+  const visible = filteredEvents();
+  document.getElementById('resultCount').textContent =
+    _searchQuery ? `${visible.length} of ${_events.length} events` : `${_events.length} events`;
+
+  if (!visible.length) {
+    document.getElementById('root').innerHTML = _searchQuery
+      ? `<div class="empty">No markets match "${_searchQuery}".</div>`
+      : '<div class="empty">No open Polymarket entertainment markets right now.</div>';
+    return;
+  }
+  document.getElementById('root').innerHTML =
+    `<div class="events-grid">${visible.map(renderCard).join('')}</div>`;
+  requestAnimationFrame(() => { visible.forEach(recordAndChart); });
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────
+function exportCSV() {
+  const rows  = filteredEvents();
+  const esc   = v => { const s = String(v ?? '').replace(/"/g,'""'); return /[,"\n\r]/.test(s) ? `"${s}"` : s; };
+  const lines = [['Event Title','Market Question','Yes %','No %','Volume ($)','Closes','URL'].map(esc).join(',')];
+  for (const ev of rows) {
+    for (const m of ev.markets) {
+      lines.push([
+        ev.title, m.question,
+        (m.yesPrice * 100).toFixed(1) + '%', (m.noPrice * 100).toFixed(1) + '%',
+        m.volume.toFixed(2), ev.endDate ? ev.endDate.slice(0,10) : '',
+        'https://polymarket.com/event/' + ev.slug,
+      ].map(esc).join(','));
+    }
+  }
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a    = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `polymarket_live_${new Date().toISOString().slice(0,10)}.csv`,
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── Load & refresh ────────────────────────────────────────────────────────
+async function load(force = false) {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const r    = await fetch('/api/markets' + (force ? '?force=1' : ''));
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    _events = (data.events || []).filter(e => !e.historical && !e.closed);
+    _events.sort((a, b) => b.volume - a.volume);
+
+    document.getElementById('statsWrap').innerHTML = renderStats(_events);
+    rerender();
+
+    const ts = new Date(data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('ts').textContent = 'Updated ' + ts;
+
+    _refreshCount++;
+    document.getElementById('refreshNote').textContent =
+      `Auto-refreshes every ${REFRESH_INTERVAL}s · ${_refreshCount} update${_refreshCount !== 1 ? 's' : ''} this session`;
+  } catch (e) {
+    document.getElementById('root').innerHTML = `<div class="err">Failed to load markets: ${e.message}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Search handlers ───────────────────────────────────────────────────────
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+searchInput.addEventListener('input', () => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    _searchQuery = searchInput.value.trim();
+    searchClear.classList.toggle('visible', _searchQuery.length > 0);
+    rerender();
+  }, 200);
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = ''; _searchQuery = '';
+  searchClear.classList.remove('visible');
+  rerender(); searchInput.focus();
+});
+
+// Initial load + auto-refresh
+load();
+setInterval(load, REFRESH_INTERVAL * 1000);
+</script>
+</body>
+</html>

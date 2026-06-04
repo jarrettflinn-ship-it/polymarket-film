@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historical Markets — PolyFilm</title>
+  <style>
+    :root {
+      --bg:       #08080e;
+      --surface:  #11111b;
+      --surface2: #18182a;
+      --border:   #1e1e30;
+      --gold:     #f0b429;
+      --gold-dim: #7a5c12;
+      --text:     #e2e2f0;
+      --muted:    #6b6b8a;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --blue:     #60a5fa;
+      --teal:     #2dd4bf;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* ── Header ─────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(8,8,14,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .logo-name { font-size: 17px; font-weight: 800; letter-spacing: -0.4px; }
+    .logo-name em { font-style: normal; color: var(--gold); }
+    .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; }
+    .site-nav { display: flex; align-items: center; gap: 2px; flex: 1; }
+    .site-nav-link { color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 6px; transition: all 0.12s; white-space: nowrap; }
+    .site-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .site-nav-link.active { color: var(--gold); background: rgba(240,180,41,0.08); }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .page-title { font-size: 13px; font-weight: 800; color: var(--text); }
+
+    /* ── Layout ──────────────────────────────────── */
+    .main { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    /* ── Toolbar ─────────────────────────────────── */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 220px; }
+    .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--muted); pointer-events: none; }
+    .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 36px 8px 34px; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .search-input:focus { border-color: var(--gold-dim); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 2px 4px; display: none; }
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--text); }
+
+    .fb-group { display: flex; align-items: center; gap: 4px; }
+    .fb-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+    .fb { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
+    .fb:hover { border-color: var(--gold-dim); color: var(--text); }
+    .fb.active { background: var(--gold); border-color: var(--gold); color: #08080e; }
+
+    .result-count { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+    /* ── Stats row ───────────────────────────────── */
+    .stats-bar { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+    .stat { flex: 1; padding: 12px 20px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+    .stat-val { font-size: 16px; font-weight: 800; color: var(--gold); }
+    .stat-val.plain { color: var(--text); }
+
+    /* ── Table ───────────────────────────────────── */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--surface2); color: var(--muted);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      padding: 10px 14px; text-align: left; white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; user-select: none; transition: color 0.12s;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sorted { color: var(--gold); }
+    thead th .sort-arrow { margin-left: 4px; font-size: 9px; opacity: 0.7; }
+
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.015); }
+    tbody td { padding: 11px 14px; vertical-align: middle; }
+
+    .source-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+      padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+    }
+    .source-poly { background: rgba(96,165,250,0.12); color: var(--blue); }
+    .source-kalshi { background: rgba(45,212,191,0.12); color: var(--teal); }
+
+    .question-cell { max-width: 380px; }
+    .ev-title { font-size: 11px; color: var(--muted); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .q-text { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .q-link { color: inherit; text-decoration: none; }
+    .q-link:hover { color: var(--gold); }
+
+    .outcome-cell { white-space: nowrap; }
+    .outcome-yes { color: var(--green); font-weight: 700; }
+    .outcome-no  { color: var(--red);   font-weight: 700; }
+    .outcome-na  { color: var(--muted); }
+
+    .prob-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .mini-bar { width: 60px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+    .mini-bar-fill { height: 100%; border-radius: 3px; background: var(--green); }
+    .prob-text { font-size: 12px; font-weight: 700; color: var(--green); white-space: nowrap; }
+
+    .date-cell { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .vol-cell  { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; text-align: right; }
+
+    /* ── Pagination ──────────────────────────────── */
+    .pagination {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 24px; flex-wrap: wrap;
+    }
+    .page-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+    .page-btn:hover:not(:disabled) { border-color: var(--gold-dim); color: var(--text); }
+    .page-btn.active { background: var(--gold); border-color: var(--gold); color: #08080e; }
+    .page-btn:disabled { opacity: 0.35; cursor: default; }
+    .page-info { font-size: 12px; color: var(--muted); }
+
+    /* ── States ──────────────────────────────────── */
+    .loading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 14px; }
+    .err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 16px; color: var(--red); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">
+    <span style="font-size:20px">🎬</span>
+    <div>
+      <div class="logo-name">Poly<em>Film</em></div>
+      <div class="logo-sub">Box Office Intelligence</div>
+    </div>
+  </a>
+  <nav class="site-nav">
+    <a href="/" class="site-nav-link">Home</a>
+    <a href="/polymarket.html" class="site-nav-link">Polymarket Live</a>
+    <a href="/kalshi.html" class="site-nav-link">Kalshi Live</a>
+    <a href="/history.html" class="site-nav-link active">History</a>
+  </nav>
+  <div class="header-right">
+    <span class="page-title">Historical Markets</span>
+  </div>
+</header>
+
+<main class="main">
+  <div id="statsWrap"></div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="searchInput"
+             placeholder="Search resolved markets, films, events…"
+             autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear">✕</button>
+    </div>
+    <div class="fb-group">
+      <span class="fb-lbl">Source</span>
+      <button class="fb active" data-val="all">All</button>
+      <button class="fb" data-val="polymarket">Polymarket</button>
+      <button class="fb" data-val="kalshi">Kalshi</button>
+    </div>
+    <span class="result-count" id="resultCount"></span>
+    <button class="fb" id="exportBtn" onclick="exportCSV()" style="border-color:var(--border);color:var(--muted)">⬇ Export CSV</button>
+  </div>
+
+  <div id="tableWrap">
+    <div class="loading"><div class="spinner"></div>Loading historical markets…</div>
+  </div>
+  <div id="paginationWrap" class="pagination"></div>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let _state = {
+  search:  '',
+  source:  'all',
+  sort:    'date',
+  dir:     'desc',
+  page:    1,
+  perPage: 100,
+};
+let _total       = 0;
+let _statsShown  = false;
+let _searchTimer = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function $M(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return n > 0 ? '$' + n.toFixed(0) : '—';
+}
+function $D(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function polyUrl(slug) { return 'https://polymarket.com/event/' + slug; }
+
+// ── Outcome inference ─────────────────────────────────────────────────────
+// For a resolved binary market, infer winner from final yes price
+function inferOutcome(row) {
+  const y = row.yesPrice;
+  const outcomes = row.outcomes || ['Yes', 'No'];
+  if (y >= 0.95) return { label: outcomes[0] || 'Yes', cls: 'outcome-yes' };
+  if (y <= 0.05) return { label: outcomes[1] || 'No',  cls: 'outcome-no'  };
+  return { label: '—', cls: 'outcome-na' };
+}
+
+// ── Table rendering ───────────────────────────────────────────────────────
+function renderTable(rows) {
+  if (!rows.length) {
+    return '<div class="empty">No resolved markets match your search.</div>';
+  }
+
+  const { sort, dir } = _state;
+
+  function thClass(col) { return sort === col ? 'sorted' : ''; }
+  function arrow(col)    {
+    if (sort !== col) return '<span class="sort-arrow">↕</span>';
+    return `<span class="sort-arrow">${dir === 'desc' ? '↓' : '↑'}</span>`;
+  }
+
+  const thead = `
+    <thead>
+      <tr>
+        <th style="width:90px">Source</th>
+        <th class="${thClass('title')}" onclick="setSort('title')">Market ${arrow('title')}</th>
+        <th style="width:110px">Outcome</th>
+        <th style="width:130px" class="${thClass('prob')}" onclick="setSort('prob')">Final % ${arrow('prob')}</th>
+        <th style="width:130px" class="${thClass('date')}" onclick="setSort('date')">Resolved ${arrow('date')}</th>
+        <th style="width:110px" class="${thClass('volume')}" onclick="setSort('volume')">Volume ${arrow('volume')}</th>
+      </tr>
+    </thead>`;
+
+  const tbodyRows = rows.map(row => {
+    const srcBadge = row.source === 'kalshi'
+      ? `<span class="source-badge source-kalshi">Kalshi</span>`
+      : `<span class="source-badge source-poly">Polymarket</span>`;
+
+    const evTitle = row.eventTitle && row.eventTitle !== row.question
+      ? `<div class="ev-title" title="${row.eventTitle.replace(/"/g,'&quot;')}">${row.eventTitle.length > 50 ? row.eventTitle.slice(0,50)+'…' : row.eventTitle}</div>`
+      : '';
+    const qText = row.question.length > 75 ? row.question.slice(0,75)+'…' : row.question;
+    const href  = row.source === 'polymarket' && row.slug ? polyUrl(row.slug) : '#';
+    const qCell = href !== '#'
+      ? `<a class="q-link" href="${href}" target="_blank" rel="noopener" title="${row.question.replace(/"/g,'&quot;')}">${qText}</a>`
+      : `<span title="${row.question.replace(/"/g,'&quot;')}">${qText}</span>`;
+
+    const outcome   = inferOutcome(row);
+    const fillWidth = Math.round(row.yesPrice * 100);
+    const probColor = row.yesPrice >= 0.95 ? 'var(--green)' : row.yesPrice <= 0.05 ? 'var(--red)' : 'var(--muted)';
+
+    return `
+      <tr>
+        <td>${srcBadge}</td>
+        <td class="question-cell">${evTitle}<div class="q-text">${qCell}</div></td>
+        <td class="outcome-cell"><span class="${outcome.cls}">${outcome.label}</span></td>
+        <td>
+          <div class="prob-bar-wrap">
+            <div class="mini-bar"><div class="mini-bar-fill" style="width:${fillWidth}%;background:${probColor}"></div></div>
+            <span class="prob-text" style="color:${probColor}">${(row.yesPrice*100).toFixed(1)}%</span>
+          </div>
+        </td>
+        <td class="date-cell">${$D(row.endDate)}</td>
+        <td class="vol-cell">${$M(row.volume)}</td>
+      </tr>`;
+  }).join('');
+
+  return `<div class="table-wrap"><table>${thead}<tbody>${tbodyRows}</tbody></table></div>`;
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────
+function renderPagination() {
+  const { page, perPage } = _state;
+  const totalPages = Math.ceil(_total / perPage);
+  if (totalPages <= 1) { document.getElementById('paginationWrap').innerHTML = ''; return; }
+
+  let html = `<button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>← Prev</button>`;
+
+  // Show up to 7 page buttons around current page
+  const start = Math.max(1, page - 3);
+  const end   = Math.min(totalPages, start + 6);
+  if (start > 1) html += `<button class="page-btn" onclick="goPage(1)">1</button>${start > 2 ? '<span class="page-info">…</span>' : ''}`;
+  for (let p = start; p <= end; p++) {
+    html += `<button class="page-btn${p===page?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  if (end < totalPages) html += `${end < totalPages-1 ? '<span class="page-info">…</span>' : ''}<button class="page-btn" onclick="goPage(${totalPages})">${totalPages}</button>`;
+
+  html += `<button class="page-btn" onclick="goPage(${page+1})" ${page>=totalPages?'disabled':''}>Next →</button>`;
+  html += `<span class="page-info">${_total.toLocaleString()} total rows</span>`;
+
+  document.getElementById('paginationWrap').innerHTML = html;
+}
+
+// ── Sort helper ───────────────────────────────────────────────────────────
+function setSort(col) {
+  // Column 'title' sorts on client side (alphabetical) — handled by API 'date'/'volume' sort
+  // For all sorts, just map to API params
+  const colMap = { title: 'date', prob: 'date', date: 'date', volume: 'volume' };
+  const apiSort = colMap[col] || 'date';
+  if (_state.sort === col) {
+    _state.dir = _state.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    _state.sort   = col;
+    _state.dir    = 'desc';
+  }
+  // Map client sort column to API sort param
+  _state._apiSort = apiSort;
+  _state.page = 1;
+  loadHistory();
+}
+
+function goPage(p) {
+  _state.page = p;
+  loadHistory();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────
+async function exportCSV() {
+  const btn = document.getElementById('exportBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+
+  try {
+    // Fetch all records (no pagination) with current search/sort
+    const params = new URLSearchParams({
+      page: 1, perPage: 5000,
+      sort: _state.sort === 'volume' ? 'volume' : 'date',
+      dir:  _state.dir,
+    });
+    if (_state.search) params.set('search', _state.search);
+
+    const r    = await fetch('/api/history?' + params);
+    const data = await r.json();
+    let rows = data.rows || [];
+
+    // Apply client-side source filter
+    if (_state.source === 'kalshi')      rows = rows.filter(r => r.source === 'kalshi');
+    else if (_state.source === 'polymarket') rows = rows.filter(r => r.source === 'polymarket');
+
+    const esc = v => { const s = String(v ?? '').replace(/"/g,'""'); return /[,"\n\r]/.test(s) ? `"${s}"` : s; };
+    const lines = [['Source','Event Title','Market Question','Outcome','Final Yes %','Resolution Date','Volume ($)','URL'].map(esc).join(',')];
+
+    for (const row of rows) {
+      const outcome = row.yesPrice >= 0.95 ? (row.outcomes?.[0] || 'Yes')
+                    : row.yesPrice <= 0.05 ? (row.outcomes?.[1] || 'No') : '—';
+      const url = row.source === 'polymarket' && row.slug
+        ? 'https://polymarket.com/event/' + row.slug : '';
+      lines.push([
+        row.source, row.eventTitle, row.question,
+        outcome, (row.yesPrice * 100).toFixed(1) + '%',
+        row.endDate ? row.endDate.slice(0,10) : '',
+        row.volume > 0 ? row.volume.toFixed(2) : '0',
+        url,
+      ].map(esc).join(','));
+    }
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const a    = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `polyfilm_history_${new Date().toISOString().slice(0,10)}.csv`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  } catch (e) {
+    alert('Export failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export CSV'; }
+  }
+}
+
+// ── Load history ──────────────────────────────────────────────────────────
+async function loadHistory() {
+  document.getElementById('tableWrap').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Loading…</div>';
+
+  const params = new URLSearchParams({
+    page:    _state.page,
+    perPage: _state.perPage,
+    sort:    _state.sort === 'volume' ? 'volume' : 'date',
+    dir:     _state.dir,
+  });
+  if (_state.search) params.set('search', _state.search);
+
+  try {
+    const r    = await fetch('/api/history?' + params);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    let rows = data.rows || [];
+    _total   = data.total || 0;
+
+    // Client-side source filter (API only returns polymarket for now)
+    if (_state.source === 'kalshi') {
+      rows = rows.filter(r => r.source === 'kalshi');
+    } else if (_state.source === 'polymarket') {
+      rows = rows.filter(r => r.source === 'polymarket');
+    }
+
+    // Show stats once
+    if (!_statsShown && data.total > 0) {
+      const totalVol = (data.rows || []).reduce((s, r) => s + r.volume, 0);
+      // Stats are approximate (based on current page); show total row count
+      document.getElementById('statsWrap').innerHTML = `
+        <div class="stats-bar">
+          <div class="stat"><div class="stat-label">Resolved Markets</div><div class="stat-val plain">${data.total.toLocaleString()}</div></div>
+          <div class="stat"><div class="stat-label">Source</div><div class="stat-val plain">Polymarket</div></div>
+          <div class="stat"><div class="stat-label">Category</div><div class="stat-val plain">Entertainment</div></div>
+          <div class="stat"><div class="stat-label">Data Range</div><div class="stat-val plain" style="font-size:13px">All Time</div></div>
+        </div>`;
+      _statsShown = true;
+    }
+
+    document.getElementById('resultCount').textContent =
+      `${_total.toLocaleString()} result${_total !== 1 ? 's' : ''}` +
+      (_state.search ? ' for "' + _state.search + '"' : '');
+
+    document.getElementById('tableWrap').innerHTML = renderTable(rows);
+    renderPagination();
+  } catch (e) {
+    document.getElementById('tableWrap').innerHTML =
+      `<div class="err">Failed to load history: ${e.message}</div>`;
+  }
+}
+
+// ── Event handlers ────────────────────────────────────────────────────────
+// Source filter buttons
+document.querySelectorAll('.fb-group .fb').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.fb-group .fb').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _state.source = btn.dataset.val;
+    _state.page   = 1;
+    loadHistory();
+  });
+});
+
+// Search
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    _state.search = searchInput.value.trim();
+    _state.page   = 1;
+    searchClear.classList.toggle('visible', _state.search.length > 0);
+    loadHistory();
+  }, 300);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  _state.search = '';
+  _state.page   = 1;
+  loadHistory();
+  searchInput.focus();
+});
+
+// Initial load
+loadHistory();
+</script>
+</body>
+</html>
