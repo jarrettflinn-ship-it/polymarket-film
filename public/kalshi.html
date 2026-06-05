@@ -111,6 +111,15 @@
     .btn-export { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 7px 13px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .btn-export:hover { border-color: rgba(45,212,191,0.4); color: var(--text); }
 
+    /* ── Filter bar ─────────────────────────────── */
+    .filter-bar { display: flex; align-items: center; gap: 16px; padding: 10px 0 14px; margin-bottom: 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; row-gap: 8px; }
+    .filter-group { display: flex; align-items: center; gap: 5px; }
+    .filter-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+    .filter-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); white-space: nowrap; margin-right: 2px; }
+    .fb { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
+    .fb:hover { border-color: rgba(45,212,191,0.4); color: var(--text); }
+    .fb.active { background: var(--teal); border-color: var(--teal); color: #08080e; }
+
     /* ── States ──────────────────────────────────── */
     .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 20px; color: var(--muted); font-size: 14px; }
     .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.75s linear infinite; }
@@ -162,6 +171,29 @@
     </div>
     <span class="result-count" id="resultCount"></span>
     <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-lbl">Type</span>
+      <button class="fb active" data-grp="type" data-val="all">All</button>
+      <button class="fb" data-grp="type" data-val="movies">Movies</button>
+      <button class="fb" data-grp="type" data-val="series">Series</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Category</span>
+      <button class="fb active" data-grp="cat" data-val="all">All</button>
+      <button class="fb" data-grp="cat" data-val="boxoffice">Box Office</button>
+      <button class="fb" data-grp="cat" data-val="awards">Awards</button>
+      <button class="fb" data-grp="cat" data-val="streaming">Streaming</button>
+      <button class="fb" data-grp="cat" data-val="props">Prop Bets</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-lbl">Sort</span>
+      <button class="fb active" data-grp="sort" data-val="volume">Volume</button>
+      <button class="fb" data-grp="sort" data-val="ending">Ending Soon</button>
+    </div>
   </div>
   <div id="root">
     <div class="loading"><div class="spinner"></div>Fetching live Kalshi entertainment markets…</div>
@@ -329,21 +361,72 @@ function renderStats(events) {
     </div>`;
 }
 
+// ── Classifiers ───────────────────────────────────────────────────────────
+function _txt(ev) { return [ev.title, ...(ev.markets||[]).map(m=>m.question||m.ticker||'')].join(' '); }
+
+function evIsSeries(ev) {
+  const t = _txt(ev);
+  if (/\bseason\s*\d/i.test(t) || /\bepisode\b/i.test(t)) return true;
+  if (/\b(be\s+renewed|be\s+cancell?ed|get\s+a\s+(second|third|next)\s+season)\b/i.test(t)) return true;
+  return false;
+}
+function evIsBoxOffice(ev) {
+  return /gross|box office|opening weekend|highest grossing/i.test(ev.title);
+}
+function evIsAwards(ev) {
+  return /oscar|emmy|grammy|golden globe|award|best picture|bafta|nominated/i.test(ev.title);
+}
+function evIsViewership(ev) {
+  const t = _txt(ev);
+  return /\b(million\s+view(er)?s?|viewership|most\s+(watched|streamed))\b/i.test(t) ||
+    /top\s+(global|us)\s+netflix/i.test(t);
+}
+function evIsPropBet(ev) {
+  if (evIsViewership(ev)) return false;
+  const t = _txt(ev);
+  return /will\s+\S+\s+(die|survive|appear|return)/i.test(t) ||
+    /who\s+(dies|kills|survives|is\s+the)/i.test(t);
+}
+
 // ── State ─────────────────────────────────────────────────────────────────
 let _events       = [];
 let _searchQuery  = '';
+let _filters      = { type: 'all', cat: 'all', sort: 'volume' };
 let _refreshCount = 0;
 let _searchTimer  = null;
 const REFRESH_INTERVAL = 60;
 
-// ── Filtered view ─────────────────────────────────────────────────────────
+// ── Filtered + sorted view ─────────────────────────────────────────────────
 function filteredEvents() {
-  if (!_searchQuery) return _events;
-  const q = _searchQuery.toLowerCase();
-  return _events.filter(e =>
-    e.title.toLowerCase().includes(q) ||
-    e.markets.some(m => (m.question || m.ticker || '').toLowerCase().includes(q))
-  );
+  let result = [..._events];
+
+  if (_filters.type === 'movies') result = result.filter(e => !evIsSeries(e));
+  if (_filters.type === 'series') result = result.filter(evIsSeries);
+
+  if (_filters.cat === 'boxoffice')  result = result.filter(evIsBoxOffice);
+  if (_filters.cat === 'awards')     result = result.filter(evIsAwards);
+  if (_filters.cat === 'streaming')  result = result.filter(evIsViewership);
+  if (_filters.cat === 'props')      result = result.filter(evIsPropBet);
+
+  if (_filters.sort === 'ending') {
+    result.sort((a, b) => {
+      const aT = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+      const bT = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+      return aT - bT;
+    });
+  } else {
+    result.sort((a, b) => b.volume - a.volume);
+  }
+
+  if (_searchQuery) {
+    const q = _searchQuery.toLowerCase();
+    result = result.filter(e =>
+      e.title.toLowerCase().includes(q) ||
+      e.markets.some(m => (m.question || m.ticker || '').toLowerCase().includes(q))
+    );
+  }
+
+  return result;
 }
 
 function rerender() {
@@ -411,6 +494,18 @@ async function load(force = false) {
     if (btn) btn.disabled = false;
   }
 }
+
+// ── Filter button handlers ────────────────────────────────────────────────
+document.querySelectorAll('.filter-bar .fb').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const grp = btn.dataset.grp;
+    const val = btn.dataset.val;
+    document.querySelectorAll(`.filter-bar .fb[data-grp="${grp}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _filters[grp] = val;
+    rerender();
+  });
+});
 
 // ── Search handlers ───────────────────────────────────────────────────────
 const searchInput = document.getElementById('searchInput');
