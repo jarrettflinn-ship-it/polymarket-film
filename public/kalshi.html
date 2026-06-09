@@ -191,7 +191,8 @@
     <div class="filter-sep"></div>
     <div class="filter-group">
       <span class="filter-lbl">Sort</span>
-      <button class="fb active" data-grp="sort" data-val="volume">Volume</button>
+      <button class="fb active" data-grp="sort" data-val="new">New</button>
+      <button class="fb" data-grp="sort" data-val="volume">Volume</button>
       <button class="fb" data-grp="sort" data-val="ending">Ending Soon</button>
     </div>
   </div>
@@ -391,7 +392,7 @@ function evIsPropBet(ev) {
 // ── State ─────────────────────────────────────────────────────────────────
 let _events       = [];
 let _searchQuery  = '';
-let _filters      = { type: 'all', cat: 'all', sort: 'volume' };
+let _filters      = { type: 'all', cat: 'all', sort: 'new' };
 let _refreshCount = 0;
 let _searchTimer  = null;
 const REFRESH_INTERVAL = 60;
@@ -408,7 +409,13 @@ function filteredEvents() {
   if (_filters.cat === 'streaming')  result = result.filter(evIsViewership);
   if (_filters.cat === 'props')      result = result.filter(evIsPropBet);
 
-  if (_filters.sort === 'ending') {
+  if (_filters.sort === 'new') {
+    result.sort((a, b) => {
+      const aT = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const bT = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return bT - aT;
+    });
+  } else if (_filters.sort === 'ending') {
     result.sort((a, b) => {
       const aT = a.endDate ? new Date(a.endDate).getTime() : Infinity;
       const bT = b.endDate ? new Date(b.endDate).getTime() : Infinity;
