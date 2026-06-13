@@ -563,6 +563,81 @@
       font-weight: 400;
     }
 
+    /* ── New Markets panel ────────────────────────────────── */
+    .nm-panel {
+      background: var(--surface);
+      border: 1px solid rgba(34,197,94,0.22);
+      border-left: 3px solid var(--green);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .nm-hd {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      background: rgba(34,197,94,0.045);
+      border-bottom: 1px solid rgba(34,197,94,0.12);
+    }
+    .nm-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--green);
+    }
+    .nm-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .nm-count {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      padding: 1px 8px;
+      border-radius: 20px;
+    }
+    .nm-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+    .nm-row:last-child { border-bottom: none; }
+    .nm-row:hover { background: rgba(34,197,94,0.04); }
+    .nm-badge {
+      flex-shrink: 0;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      background: rgba(34,197,94,0.14);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.28);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .nm-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .nm-age  { flex-shrink:0; font-size:11px; color:var(--muted); min-width:52px; text-align:right; }
+    .nm-prob { flex-shrink:0; font-size:13px; font-weight:700; color:var(--gold); min-width:48px; text-align:right; }
+    .nm-vol  { flex-shrink:0; font-size:12px; color:var(--muted); min-width:48px; text-align:right; }
+    .nm-arrow{ flex-shrink:0; font-size:11px; color:var(--muted); margin-left:2px; }
+
     /* ── Site nav ────────────────────────────────────────── */
     .site-nav { display: flex; align-items: center; gap: 2px; }
     .site-nav-link {
@@ -965,6 +1040,54 @@ function renderCard(m, ev) {
     </div>`;
 }
 
+// ── New Markets panel (last 48 h, always from raw data) ───────────────────
+function renderNewMarkets(rawEvents) {
+  const now = Date.now();
+  const H48 = 48 * 60 * 60 * 1000;
+
+  const newEvs = (rawEvents || [])
+    .filter(e => !e.historical && !e.closed && e.startDate)
+    .filter(e => {
+      const t = new Date(e.startDate).getTime();
+      return t > 0 && t <= now && (now - t) <= H48;
+    })
+    .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+
+  if (!newEvs.length) return '';
+
+  function age(iso) {
+    const mins = Math.floor((now - new Date(iso).getTime()) / 60000);
+    if (mins < 60)   return mins + 'm ago';
+    if (mins < 1440) return Math.floor(mins / 60) + 'h ago';
+    return Math.floor(mins / 1440) + 'd ago';
+  }
+
+  const rows = newEvs.map(ev => {
+    const topMkt = ev.markets[0];
+    const prob   = topMkt ? pct(topMkt.yesPrice) : '—';
+    const vol    = ev.volume > 0 ? $M(ev.volume) : '—';
+    return `
+      <a class="nm-row" href="${polyUrl(ev.slug)}" target="_blank" rel="noopener">
+        <span class="nm-badge">NEW</span>
+        <span class="nm-title">${ev.title}</span>
+        <span class="nm-age">${age(ev.startDate)}</span>
+        <span class="nm-prob">${prob}</span>
+        <span class="nm-vol">${vol}</span>
+        <span class="nm-arrow">→</span>
+      </a>`;
+  }).join('');
+
+  return `
+    <div class="nm-panel">
+      <div class="nm-hd">
+        <span class="nm-label">New Markets</span>
+        <span class="nm-sub">Opened in the last 48 hours</span>
+        <span class="nm-count">${newEvs.length}</span>
+      </div>
+      <div class="nm-list">${rows}</div>
+    </div>`;
+}
+
 // ── Main render ───────────────────────────────────────────────────────────
 function render(data) {
   const events = data.events || [];
@@ -1072,7 +1195,8 @@ function render(data) {
       </div>
     </div>`;
 
-  let html = statsBar;
+  const newMarketsHtml = renderNewMarkets(_rawData?.events);
+  let html = newMarketsHtml + statsBar;
 
   // Box office race sections
   if (races.length) {
